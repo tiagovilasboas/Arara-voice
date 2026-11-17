@@ -314,6 +314,36 @@ class DefaultDictationEngineTest {
     }
 
     @Test
+    void cancelWhileTranscribingSkipsPasteAndHistory() throws Exception {
+        CountDownLatch busy = new CountDownLatch(1), release = new CountDownLatch(1);
+        Transcriber t = pcm16k -> {
+            busy.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException ex) {
+                throw new IllegalStateException(ex);
+            }
+            return "não pode colar";
+        };
+        List<String> pasted = new ArrayList<>();
+        DefaultDictationEngine e = engine(t, pasted::add);
+        e.toggle();
+        assertEquals(DictationState.LISTENING, next());
+        for (int i = 0; i < 4; i++) mic.push(VadTest.SPEECH);
+        e.toggle();
+        assertEquals(DictationState.TRANSCRIBING, next());
+        assertTrue(busy.await(5, TimeUnit.SECONDS), "Whisper em andamento");
+        e.cancel();
+        assertEquals(DictationState.IDLE, next());
+        release.countDown();
+        assertNull(states.poll(500, TimeUnit.MILLISECONDS), "nada depois do cancelamento");
+        assertEquals(DictationState.IDLE, e.state());
+        assertTrue(pasted.isEmpty());
+        assertTrue(history.all().isEmpty());
+        assertTrue(errors.isEmpty());
+    }
+
+    @Test
     void cancelDropsPartInProgressAndQueuedParts() throws Exception {
         CountDownLatch busy = new CountDownLatch(1), release = new CountDownLatch(1);
         List<Integer> calls = new ArrayList<>();

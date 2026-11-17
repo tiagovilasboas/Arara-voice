@@ -149,6 +149,11 @@ final class DefaultDictationEngine implements DictationEngine {
 
     @Override
     public synchronized void cancel() {
+        if (state == DictationState.TRANSCRIBING) { // Esc na transcrição: a thread de fundo vê cancelled e não cola
+            take.cancelled = true;
+            setState(DictationState.IDLE);
+            return;
+        }
         if (!recording()) return;
         holding = false;
         mic.stop();
@@ -459,7 +464,8 @@ final class DefaultDictationEngine implements DictationEngine {
         return word.replaceAll("[^\\p{L}\\p{N}]", "").toLowerCase(Locale.ROOT);
     }
 
-    private void deliver(Take t) {
+    /** Com o lock: o cancel() não entra entre a checagem de cancelled e o estado final. */
+    private synchronized void deliver(Take t) {
         if (t.cancelled) return;
         String text;
         try {
