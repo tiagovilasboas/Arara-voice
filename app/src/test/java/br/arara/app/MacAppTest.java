@@ -2,6 +2,7 @@ package br.arara.app;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -19,5 +20,16 @@ class MacAppTest {
         assertTrue(MacApp.wrongPlace("/private/var/folders/x/AppTranslocation/ABC/d/Arara.app/Contents/MacOS/Arara"));
         assertFalse(MacApp.wrongPlace("/Applications/Arara.app/Contents/MacOS/Arara"));
         assertFalse(MacApp.wrongPlace(null));
+    }
+
+    @Test
+    void comando_de_zerar_a_acessibilidade() {
+        assertEquals(List.of("/usr/bin/tccutil", "reset", "Accessibility", "br.arara.Arara"), MacApp.resetCommand());
+    }
+
+    @Test
+    void ajuda_cita_o_tccutil() {
+        assertTrue(MacApp.accessHelp().contains("tccutil reset Accessibility br.arara.Arara"));
+        assertTrue(MacApp.accessHelp().contains("Zerar e reabrir"));
     }
 }
